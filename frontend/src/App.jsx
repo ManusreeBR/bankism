@@ -11,19 +11,20 @@ const ATTACKS = [
   { label: '⚠️ Over limit', text: 'Send 900 to Alice' },
 ]
 
-const post = (url, body) =>
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).then(r => r.json())
-
-
 const LANGS = [
   { code: 'en-IN', label: 'English' },
   { code: 'hi-IN', label: 'हिन्दी' },
 ]
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+
+const API = import.meta.env.DEV ? 'http://127.0.0.1:8000' : ''
+
+const post = (url, body) =>
+  fetch(API + url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(r => r.json())
 
 export default function App() {
   const [input, setInput] = useState('')
@@ -32,49 +33,10 @@ export default function App() {
   ])
   const [verdict, setVerdict] = useState(null)
   const [pending, setPending] = useState(null)
-  const [account, setAccount] = useState({ balance: 0, trusted: {} })
+  const [account, setAccount] = useState({ balance: 0 })
   const [events, setEvents] = useState([])
   const [trusted, setTrusted] = useState(false)
-
-  const refresh = async () => {
-    setAccount(await fetch('/api/account').then(r => r.json()))
-    setEvents(await fetch('/api/events').then(r => r.json()))
-  }
-  useEffect(() => { refresh() }, [])
-
-  const send = async (text) => {
-    if (!text.trim()) return
-    setMessages(m => [...m, { role: 'user', text }])
-    setInput('')
-    const res = await post('/api/chat', { message: text })
-    setVerdict(res.verdict)
-    setPending(res.status === 'needs_confirmation' ? res.pending_id : null)
-    setMessages(m => [
-      ...m,
-      { role: 'bot', text: res.reply, status: res.status },
-      ...(res.alert ? [{ role: 'bot', text: '🔔 ' + res.alert, status: 'alert' }] : []),
-    ])
-    speak(res.reply)
-    refresh()
-  }
-
-  const confirm = async () => {
-    const res = await post('/api/confirm', { pending_id: pending })
-    setPending(null)
-    setMessages(m => [
-      ...m,
-      {
-        role: 'bot',
-        text: res.ok ? '✅ Transfer complete.' : '❌ ' + res.problems.join('; '),
-        status: res.ok ? 'ok' : 'blocked',
-      },
-    ])
-    refresh()
-  }
-
-  const toggleTrusted = async (v) => {
-    setTrusted(v)
-      const [lang, setLang] = useState('en-IN')
+  const [lang, setLang] = useState('en-IN')
   const [listening, setListening] = useState(false)
   const [speakOn, setSpeakOn] = useState(false)
 
@@ -97,7 +59,56 @@ export default function App() {
     rec.onresult = (e) => setInput(e.results[0][0].transcript)
     rec.start()
   }
-    await post('/api/trusted-circle', { enabled: v, verified: v }) // demo: simulated verification
+
+  const refresh = async () => {
+    try {
+      const acc = await fetch(API + '/api/account').then(r => r.json())
+      const ev = await fetch(API + '/api/events').then(r => r.json())
+      if (acc && typeof acc.balance === 'number') setAccount(acc)
+      setEvents(Array.isArray(ev) ? ev : [])
+    } catch (err) {
+      console.error('Backend not reachable', err)
+    }
+  }
+  useEffect(() => { refresh() }, [])
+
+  const send = async (text) => {
+    if (!text.trim()) return
+    setMessages(m => [...m, { role: 'user', text }])
+    setInput('')
+    try {
+      const res = await post('/api/chat', { message: text })
+      setVerdict(res.verdict)
+      setPending(res.status === 'needs_confirmation' ? res.pending_id : null)
+      setMessages(m => [
+        ...m,
+        { role: 'bot', text: res.reply, status: res.status },
+        ...(res.alert ? [{ role: 'bot', text: '🔔 ' + res.alert, status: 'alert' }] : []),
+      ])
+      speak(res.reply)
+    } catch (err) {
+      setMessages(m => [...m, { role: 'bot', text: 'Cannot reach the backend.', status: 'blocked' }])
+    }
+    refresh()
+  }
+
+  const confirm = async () => {
+    const res = await post('/api/confirm', { pending_id: pending })
+    setPending(null)
+    setMessages(m => [
+      ...m,
+      {
+        role: 'bot',
+        text: res.ok ? '✅ Transfer complete.' : '❌ ' + res.problems.join('; '),
+        status: res.ok ? 'ok' : 'blocked',
+      },
+    ])
+    refresh()
+  }
+
+  const toggleTrusted = async (v) => {
+    setTrusted(v)
+    await post('/api/trusted-circle', { enabled: v, verified: v })
     refresh()
   }
 
@@ -126,7 +137,7 @@ export default function App() {
             ))}
           </div>
           {pending && <button className="confirm" onClick={confirm}>Confirm transfer</button>}
-                    <div className="row">
+          <div className="row">
             <input
               value={input}
               onChange={e => setInput(e.target.value)}

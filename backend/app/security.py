@@ -11,6 +11,7 @@ def normalize(text: str) -> str:
 
 # (category, points, regex, human explanation)
 RULES = [
+    # ---------- English ----------
     ("prompt_injection", 60,
      r"\bignore\b.{0,20}\b(previous|prior|above|earlier|all)\b.{0,20}\b(instructions|rules|prompts?)\b",
      "Tries to make the assistant ignore its instructions"),
@@ -30,7 +31,7 @@ RULES = [
      r"\b(remove|ignore|raise|disable|bypass|increase)\b.{0,15}\b(daily |transfer |spending )?limits?\b",
      "Tries to bypass transfer limits"),
     ("suspicious_payment", 25,
-     r"\b(transfer|send|wire|move)\b.{0,10}\b(all|everything|entire|full)\b.{0,20}\b(balance|money|funds|savings)\b",
+     r"\b(transfer|send|wire|move)\b.{0,10}\b(all|everything|entire|full)\b",
      "Requests draining the entire account"),
     ("suspicious_payment", 20,
      r"\b(gift ?cards?|bitcoin|crypto|western union|wire to unknown)\b",
@@ -38,6 +39,23 @@ RULES = [
     ("urgency_pressure", 15,
      r"\b(urgent(ly)?|immediately|right now|asap|before anyone)\b",
      "Uses urgency pressure, a common scam tactic"),
+
+    # ---------- Hindi ----------
+    ("prompt_injection", 60,
+     r"(निर्देश|नियम).{0,20}(अनदेखा|भूल जाओ|भूल जाइए|भूल जाएं)",
+     "Tries to make the assistant ignore its instructions (Hindi)"),
+    ("rule_override", 50,
+     r"(डेवलपर|एडमिन|डीबग) मोड",
+     "Attempts to change the assistant's role or privileges (Hindi)"),
+    ("confirmation_bypass", 35,
+     r"बिना.{0,10}(पुष्टि|कन्फर्म|कन्फर्मेशन)",
+     "Tries to skip the confirmation step (Hindi)"),
+    ("limit_bypass", 35,
+     r"(सीमा|लिमिट).{0,10}(हटा|खत्म)",
+     "Tries to bypass transfer limits (Hindi)"),
+    ("secret_extraction", 50,
+     r"(सिस्टम प्रॉम्प्ट|गुप्त निर्देश|पासवर्ड|पिन).{0,15}(बताओ|दिखाओ|बताइए|दिखाइए)",
+     "Tries to extract hidden instructions or secrets (Hindi)"),
 ]
 
 
