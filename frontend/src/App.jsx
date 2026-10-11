@@ -11,10 +11,7 @@ const ATTACKS = [
   { label: '⚠️ Over limit', text: 'Send 900 to Alice' },
 ]
 
-const LANGS = [
-  { code: 'en-IN', label: 'English' },
-  { code: 'hi-IN', label: 'हिन्दी' },
-]
+
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition
 
 const API = import.meta.env.DEV ? 'http://127.0.0.1:8000' : ''
@@ -36,7 +33,6 @@ export default function App() {
   const [account, setAccount] = useState({ balance: 0 })
   const [events, setEvents] = useState([])
   const [trusted, setTrusted] = useState(false)
-  const [lang, setLang] = useState('en-IN')
   const [listening, setListening] = useState(false)
   const [speakOn, setSpeakOn] = useState(false)
 
@@ -51,7 +47,7 @@ export default function App() {
   const listen = () => {
     if (!SR) { alert('Voice input needs Chrome or Edge.'); return }
     const rec = new SR()
-    rec.lang = lang
+    rec.lang = 'en-IN'
     rec.interimResults = false
     rec.onstart = () => setListening(true)
     rec.onend = () => setListening(false)
@@ -61,15 +57,16 @@ export default function App() {
   }
 
   const refresh = async () => {
-    try {
-      const acc = await fetch(API + '/api/account').then(r => r.json())
-      const ev = await fetch(API + '/api/events').then(r => r.json())
-      if (acc && typeof acc.balance === 'number') setAccount(acc)
-      setEvents(Array.isArray(ev) ? ev : [])
-    } catch (err) {
-      console.error('Backend not reachable', err)
-    }
+  try {
+    const acc = await fetch(API + '/api/account').then(r => r.json())
+    const ev = await fetch(API + '/api/events').then(r => r.json())
+    console.log('API =', API, 'account =', acc)
+    if (acc && acc.balance !== undefined) setAccount({ ...acc, balance: Number(acc.balance) })
+    setEvents(Array.isArray(ev) ? ev : [])
+  } catch (err) {
+    console.error('Backend not reachable', err)
   }
+}
   useEffect(() => { refresh() }, [])
 
   const send = async (text) => {
@@ -150,9 +147,6 @@ export default function App() {
             <button onClick={() => send(input)}>Send</button>
           </div>
           <div className="opts">
-            <select value={lang} onChange={e => setLang(e.target.value)}>
-              {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-            </select>
             <label>
               <input type="checkbox" checked={speakOn} onChange={e => setSpeakOn(e.target.checked)} /> Read replies aloud
             </label>
