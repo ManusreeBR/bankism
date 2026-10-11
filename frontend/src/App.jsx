@@ -18,6 +18,13 @@ const post = (url, body) =>
     body: JSON.stringify(body),
   }).then(r => r.json())
 
+
+const LANGS = [
+  { code: 'en-IN', label: 'English' },
+  { code: 'hi-IN', label: 'हिन्दी' },
+]
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+
 export default function App() {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([
@@ -47,6 +54,7 @@ export default function App() {
       { role: 'bot', text: res.reply, status: res.status },
       ...(res.alert ? [{ role: 'bot', text: '🔔 ' + res.alert, status: 'alert' }] : []),
     ])
+    speak(res.reply)
     refresh()
   }
 
@@ -66,6 +74,29 @@ export default function App() {
 
   const toggleTrusted = async (v) => {
     setTrusted(v)
+      const [lang, setLang] = useState('en-IN')
+  const [listening, setListening] = useState(false)
+  const [speakOn, setSpeakOn] = useState(false)
+
+  const speak = (text) => {
+    if (!speakOn || !window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = 'en-IN'
+    window.speechSynthesis.speak(u)
+  }
+
+  const listen = () => {
+    if (!SR) { alert('Voice input needs Chrome or Edge.'); return }
+    const rec = new SR()
+    rec.lang = lang
+    rec.interimResults = false
+    rec.onstart = () => setListening(true)
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    rec.onresult = (e) => setInput(e.results[0][0].transcript)
+    rec.start()
+  }
     await post('/api/trusted-circle', { enabled: v, verified: v }) // demo: simulated verification
     refresh()
   }
@@ -95,14 +126,25 @@ export default function App() {
             ))}
           </div>
           {pending && <button className="confirm" onClick={confirm}>Confirm transfer</button>}
-          <div className="row">
+                    <div className="row">
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && send(input)}
-              placeholder="Type a request..."
+              placeholder="Type or speak a request..."
             />
+            <button className={`mic ${listening ? 'on' : ''}`} onClick={listen} title="Speak">
+              {listening ? '🎙️ Listening…' : '🎤'}
+            </button>
             <button onClick={() => send(input)}>Send</button>
+          </div>
+          <div className="opts">
+            <select value={lang} onChange={e => setLang(e.target.value)}>
+              {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+            </select>
+            <label>
+              <input type="checkbox" checked={speakOn} onChange={e => setSpeakOn(e.target.checked)} /> Read replies aloud
+            </label>
           </div>
         </section>
 
