@@ -118,3 +118,7 @@ def reset():
 static = Path(__file__).resolve().parent.parent / "static"
 if static.exists():
     app.mount("/", StaticFiles(directory=static, html=True), name="static")
+
+DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if DIST.exists():
+    app.mount("/", StaticFiles(directory=DIST, html=True), name="frontend")    
